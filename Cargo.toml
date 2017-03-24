@@ -1,0 +1,15 @@
+[package]
+name = "yaql"
+version = "0.1.0"
+authors = ["eddy"]
+build = "build.rs"
+
+[dependencies]
+cpp = "0.2"
+cpp_macros = "0.2"
+libc = "*"
+enum_primitive = "*"
+
+[build-dependencies]
+cpp_build = "0.2"
+pkg-config = "*"
