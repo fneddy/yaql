@@ -1,0 +1,8 @@
+[default]
+name=Vorgabe
+device=local
+runtime=host
+config-opts=
+prefix=/home/eddy/.cache/gnome-builder/install/yaql/host
+app-id=
+default=true
