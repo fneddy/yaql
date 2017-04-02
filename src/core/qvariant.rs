@@ -14,10 +14,13 @@ cpp!{{
     #include <cstring>
 }}
 
+/// QVariant wraps around the Qt/C++ QVariant type
 pub struct QVariant {
     raw: *mut c_void,
 }
 impl QVariant {
+    /// use the new method the create an empty QVariant.
+    /// if you want to create it from a value use QVariant::from
     pub fn new() -> QVariant {
         let p = unsafe {
             cpp! ([] -> *mut c_void as "void *"{
@@ -26,16 +29,23 @@ impl QVariant {
         };
         QVariant { raw: p }
     }
+
+    /// create a QVariant from a raw C++ QVariant pointer
     pub unsafe fn from_raw(p: *mut c_void) -> QVariant {
         QVariant {raw: p}
     }
+
+    /// get the C++ QVariant pointer. This method will consume self!
     pub unsafe fn into_raw(self) -> *mut c_void {
         self.raw
     }
 
+    /// get the QMetaTypeId of the value. this will not work on QObject values!
     pub fn qmeta_type_id(&self) -> QMetaTypeId {
         QMetaTypeId::from(self.type_id())
     }
+
+    /// get the type id of the value
     pub fn type_id(&self) -> i32 {
         let p = self.raw;
         unsafe {
@@ -45,6 +55,7 @@ impl QVariant {
         }
     }
 
+    /// can this type be converted to this type?
     pub fn can_convert(&self, type_id: i32) -> bool {
         let p = self.raw;
         unsafe {
@@ -54,6 +65,7 @@ impl QVariant {
         }
     }
 
+    /// clear the value
     pub fn clear(&mut self) {
         let mut p = self.raw;
         unsafe {
@@ -63,6 +75,7 @@ impl QVariant {
         }
     }
 
+    /// convert value to specific type
     pub fn convert(&mut self, type_id: i32) -> bool {
         let mut p = self.raw;
         unsafe {
@@ -72,6 +85,7 @@ impl QVariant {
         }
     }
 
+    /// is this value empty?
     pub fn is_null(&self) -> bool {
         let p = self.raw;
         unsafe {
@@ -81,6 +95,7 @@ impl QVariant {
         }
     }
 
+    /// is this value valid?
     pub fn is_valid(&self) -> bool {
         let p = self.raw;
         unsafe {
@@ -90,12 +105,28 @@ impl QVariant {
         }
     }
 
-    // TODO
-    pub fn set_value<T: Into<QVariant>>(&self, value :T) {
+    // set the value of this QVariant
+    pub fn set_value<T: Into<QVariant>>(&mut self, value :T) {
+        let v: QVariant = value.into();
+        let mut s = self.raw;
+
+        unsafe {
+            cpp! ([ v as "QVariant*",  mut s as "QVariant*"] {
+            s->setValue(*v);
+        })
+        };
+
     }
 
-    // TODO
-    pub fn swap_value<T: Into<QVariant>>(&self, value :&mut T) {
+    /// swaps the value with another QVariant
+    pub fn swap(&mut self, value :&mut QVariant) {
+        let mut v = value.raw;
+        let mut s = self.raw;
+        unsafe {
+            cpp! ([ mut v as "QVariant*",  mut s as "QVariant*"] {
+            s->swap(*v);
+        })
+        };
     }
 
 }
@@ -112,28 +143,58 @@ impl Drop for QVariant {
 impl Default for QVariant {
     fn default() -> QVariant { QVariant::new() }
 }
-
-
-// TODO
 impl PartialEq for QVariant {
     fn eq(&self, other: &QVariant) -> bool {
-        false
+
+        let p = self.raw;
+        let o = other.raw;
+
+        unsafe {
+            cpp! ([ p as "QVariant*",  o as "QVariant*"] -> bool as "bool"{
+            return (*p) == (*o);
+        })
+        }
     }
 }
-impl Eq for QVariant {
-}
 
-// TODO
-impl Ord for QVariant {
-    fn cmp(&self, other: &QVariant) -> Ordering {
-        Ordering::Less
-    }
-}
 
-// TODO
 impl PartialOrd for QVariant {
+    // TODO is this realy neccecary?
     fn partial_cmp(&self, other: &QVariant) -> Option<Ordering> {
-    None
+        None
+    }
+
+    fn lt(&self, other: &QVariant) -> bool {
+        let s = self.raw;
+        let o = other.raw;
+        unsafe {
+            cpp! ([ s as "QVariant*", o as "QVariant*"]  -> bool as "bool"{
+            return *s < *o;
+        })}
+    }
+    fn le(&self, other: &QVariant) -> bool {
+            let s = self.raw;
+        let o = other.raw;
+        unsafe {
+            cpp! ([ s as "QVariant*", o as "QVariant*"]  -> bool as "bool"{
+            return *s <= *o;
+        })}
+    }
+    fn gt(&self, other: &QVariant) -> bool {
+        let s = self.raw;
+        let o = other.raw;
+        unsafe {
+            cpp! ([ s as "QVariant*", o as "QVariant*"]  -> bool as "bool"{
+            return *s > *o;
+        })}
+    }
+    fn ge(&self, other: &QVariant) -> bool {
+        let s = self.raw;
+        let o = other.raw;
+        unsafe {
+            cpp! ([ s as "QVariant*", o as "QVariant*"]  -> bool as "bool"{
+            return *s >= *o;
+        })}
     }
 }
 
@@ -328,4 +389,47 @@ impl From<String> for QVariant {
     }
 }
 
+
+#[test]
+fn qvar_par_eq() {
+    let a = QVariant::from(3);
+    let b = QVariant::from("5".to_owned()  );
+
+    assert!(a < b);
+    assert!(a <= b);
+    assert!(!(a > b));
+    assert!(!(a >= b));
+}
+
+/*
+#[test]
+fn qvar_from() {
+    let a = QVariant::from(-42i32);
+    let a  = QVariant::from(42u32);
+
+    let a  = QVariant::from(-42_000_000_000_000i64);
+    let a  = QVariant::from(42_000_000_000_000u64);
+
+}*/
+
+#[test]
+fn qvar_set_val() {
+    let mut a = QVariant::new();
+    a.set_value(42);
+    let s:String = a.into();
+    assert!(s == "42");
+}
+
+#[test]
+fn qvar_swap() {
+    let mut a = QVariant::from("a".to_owned());
+    let mut b = QVariant::from(3);
+    a.swap( &mut b);
+
+    let x:i32 = a.into();
+    let y:String = b.into();
+
+    assert!(x == 3);
+    assert!(y == "a");
+}
 
