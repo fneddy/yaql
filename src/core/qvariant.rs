@@ -3,6 +3,7 @@ use libc::c_void;
 use libc::c_char;
 use std::char::decode_utf16;
 use std::ffi::CString;
+use std::cmp::Ordering;
 
 use core::QMetaTypeId;
 
@@ -24,6 +25,12 @@ impl QVariant {
         })
         };
         QVariant { raw: p }
+    }
+    pub unsafe fn from_raw(p: *mut c_void) -> QVariant {
+        QVariant {raw: p}
+    }
+    pub unsafe fn into_raw(self) -> *mut c_void {
+        self.raw
     }
 
     pub fn qmeta_type_id(&self) -> QMetaTypeId {
@@ -82,6 +89,15 @@ impl QVariant {
         })
         }
     }
+
+    // TODO
+    pub fn set_value<T: Into<QVariant>>(&self, value :T) {
+    }
+
+    // TODO
+    pub fn swap_value<T: Into<QVariant>>(&self, value :&mut T) {
+    }
+
 }
 impl Drop for QVariant {
     fn drop(&mut self) {
@@ -93,28 +109,37 @@ impl Drop for QVariant {
         };
     }
 }
+impl Default for QVariant {
+    fn default() -> QVariant { QVariant::new() }
+}
 
-// into
 
-// bytearray
-// bool
-// char
-// datetime chrono::datetime
-// double f64
-// float f32
-// int i32
-// list
-// longlong i64
-// map
-// modelindex
-// string
-// stringlist
-// uint u32
-// ulonglong u64
-// url
+// TODO
+impl PartialEq for QVariant {
+    fn eq(&self, other: &QVariant) -> bool {
+        false
+    }
+}
+impl Eq for QVariant {
+}
+
+// TODO
+impl Ord for QVariant {
+    fn cmp(&self, other: &QVariant) -> Ordering {
+        Ordering::Less
+    }
+}
+
+// TODO
+impl PartialOrd for QVariant {
+    fn partial_cmp(&self, other: &QVariant) -> Option<Ordering> {
+    None
+    }
+}
 
 
 // -------------------------------------------------------
+// TODO impl modelindex, stringlist, url, chrono::datetime, bytearray, map, qvariantlist, optinal; json
 
 impl Into<bool> for QVariant {
     fn into(self) -> bool {
@@ -222,6 +247,7 @@ impl Into<String> for QVariant {
 
 // -------------------------------------------------------
 // from
+// TODO impl modelindex, stringlist, url, chrono::datetime, bytearray, map, qvariantlist, optinal; json
 impl From<i32> for QVariant {
     fn from(v: i32) -> QVariant {
         let a = unsafe {
@@ -242,21 +268,64 @@ impl From<u32> for QVariant {
         QVariant { raw: a }
     }
 }
+impl From<i64> for QVariant {
+    fn from(v: i64) -> QVariant {
+        let a = unsafe {
+            cpp! ([v as "qlonglong"] -> *mut c_void as "void *"{
+            return new QVariant(v);
+        })
+        };
+        QVariant { raw: a }
+    }
+}
+impl From<u64> for QVariant {
+    fn from(v: u64) -> QVariant {
+        let a = unsafe {
+            cpp! ([v as "qulonglong"] -> *mut c_void as "void *"{
+            return new QVariant(v);
+        })
+        };
+        QVariant { raw: a }
+    }
+}
+impl From<f32> for QVariant {
+    fn from(v: f32) -> QVariant {
+        let a = unsafe {
+            cpp! ([v as "float"] -> *mut c_void as "void *"{
+            return new QVariant(v);
+        })
+        };
+        QVariant { raw: a }
+    }
+}
+impl From<f64> for QVariant {
+    fn from(v: f64) -> QVariant {
+        let a = unsafe {
+            cpp! ([v as "double"] -> *mut c_void as "void *"{
+            return new QVariant(v);
+        })
+        };
+        QVariant { raw: a }
+    }
+}
 
 
-#[test]
-fn from_i32() {
-    let v = QVariant::from(23);
-    assert!(v.qmeta_type_id() == QMetaTypeId::Int);
+impl From<String> for QVariant {
+    fn from(v: String) -> QVariant {
+        let d = CString::new(v).unwrap();
+        let x = d.into_raw();
+
+        let a = unsafe {
+            cpp! ([x as "char*"] -> *mut c_void as "void *"{
+            return new QVariant(x);
+        })
+        };
+        unsafe {
+            CString::from_raw(x);
+        }
+        QVariant { raw: a }
+
+    }
 }
-#[test]
-fn can_convert() {
-    let v = QVariant::from(23);
-    assert!(v.can_convert(QMetaTypeId::QString.into()));
-}
-#[test]
-fn into_string() {
-    let v = QVariant::from(23);
-    let a:String = v.into();
-    assert_eq!(a, "23");
-}
+
+

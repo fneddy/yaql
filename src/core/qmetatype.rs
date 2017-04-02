@@ -1,7 +1,7 @@
 use enum_primitive::FromPrimitive;
 
 enum_from_primitive! {
-    #[derive(PartialEq)]
+    #[derive(PartialEq,Debug)]
     pub enum QMetaTypeId {
         Void=43,
         Bool=1,

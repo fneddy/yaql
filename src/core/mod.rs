@@ -10,3 +10,4 @@ mod qvariantmap;
 
 pub use self::qmetatype::QMetaTypeId;
 pub use self::qvariant::QVariant;
+pub use self::qvariantlist::QVariantList;
